@@ -89,16 +89,21 @@ def count_buying_nodes(G):
     return direct_buyers, peer_influenced_buyers
 
 # Streamlit user input for constants
-st.markdown("<p class='centered-title'>Show your Viral Influencer Reach</p>", unsafe_allow_html=True)
+st.markdown("<p class='centered-title'>Show your Effectiveness as Influencer</p>", unsafe_allow_html=True)
 
-NUM_PERSONS = st.slider('Select the Size of the Network. More People will create a denser network. Start with 500 people.', 100, 1000, 500)
-INFLUENCER_NET_REACH = st.slider('How many people will you reach? (Influencer Net Reach in %) ', 0.0, 1.0, 0.15)
-INFLUENCER_CONVINCING_PROB = st.slider('How many will you influence to buy the product in %?', 0.0, 1.0, 0.2)
-FRIEND_SINGLE_BUYING_PROB = st.slider('What is the probability that the person will influence his friend?', 0.0, 1.0, 0.1)
-FRIEND_MULTIPLE_BUYING_PROB = st.slider('What is the probability that two or more persons will influence a friend?', 0.0, 1.0, 0.25)
+NODES_IN_NETWORK = 300
+INFLUENCER_NET_REACH_ABSOLUTE = st.slider('Total Reach in Thousands', 1, 1000, 100)
+PRODUCT_INFLUENCER_FIT = st.slider('How good does the product fit to the Influencer and his show (0-100%)', 0.0, 1.0, 0.6)
+PRODUCT_TARGET_FIT = st.slider('How good does the product fit to the Viewership of the Influencer  (0-100%)', 0.0, 1.0, 0.8)
+PRODUCT_BUYING_PROBABILITY = st.slider('How many direct sales can the Influener return in % of Viewership  (0-100%)', 0.0, 1.0, 0.05)
+SOCIAL_ACTIVITY = st.slider('How social active is the community of the Influencer. (0-100%)', 0.0, 1.0, 0.3)
+
+FRIEND_SINGLE_BUYING_PROB = 0.1
+FRIEND_MULTIPLE_BUYING_PROB = 0.25
+
 
 # Graph initialization
-G = nx.random_geometric_graph(NUM_PERSONS, 0.1)
+G = nx.random_geometric_graph(NODES_IN_NETWORK, SOCIAL_ACTIVITY /4)
 nx.set_node_attributes(G, "Person", "type")
 nx.set_node_attributes(G, "No-Buyer", "state")
 nx.set_node_attributes(G, "none", "influenced_by")  # New attribute to track influence source
@@ -111,10 +116,10 @@ pos = nx.get_node_attributes(G, "pos")
 
 # Graph 1: Initial network
 st.markdown("<p class='centered-subheader'>Simulation of your Audience Network</p>", unsafe_allow_html=True)
-visualize_graph_with_purchases(G, "Initial audience with their connections", pos)
+visualize_graph_with_purchases(G, "Influencing audience with high Product x Influencer x Target fit", pos)
 
 # Step 2: Connect influencer to a fraction of the network
-num_connections = int(INFLUENCER_NET_REACH * len(G.nodes))
+num_connections = int(PRODUCT_INFLUENCER_FIT * PRODUCT_TARGET_FIT * len(G.nodes))
 nodes_to_connect = random.sample(list(G.nodes)[:-1], num_connections)
 for node in nodes_to_connect:
     G.add_edge(influencer_node, node)
@@ -123,7 +128,7 @@ for node in nodes_to_connect:
 
 # Step 3: Convince nodes influenced by the influencer (no peer influence yet)
 for neighbor in G.neighbors(influencer_node):
-    if random.random() < INFLUENCER_CONVINCING_PROB:
+    if random.random() < PRODUCT_BUYING_PROBABILITY:
         G.nodes[neighbor]['state'] = "Buyer"
         G.nodes[neighbor]['influenced_by'] = "influencer"
 
@@ -166,11 +171,15 @@ visualize_graph_with_purchases(G, "Viral Reach after Campaign: Buyers (green) by
 
 # Simulation summary
 st.markdown("<p class='centered-subheader'>Simulation Summary</p>", unsafe_allow_html=True)
-direct_buyers, peer_influenced_buyers = count_buying_nodes(G)
-total_buyers = direct_buyers + peer_influenced_buyers
-pct_direct = (direct_buyers / NUM_PERSONS) * 100
-pct_peer = (peer_influenced_buyers / NUM_PERSONS) * 100
 
-st.write(f"Total Buyers: {total_buyers} ({(total_buyers / NUM_PERSONS) * 100:.2f}%)")
+direct_buyers, peer_influenced_buyers = count_buying_nodes(G)
+direct_buyers = round(direct_buyers * (INFLUENCER_NET_REACH_ABSOLUTE *1000 / NODES_IN_NETWORK))
+peer_influenced_buyers = round(peer_influenced_buyers * (INFLUENCER_NET_REACH_ABSOLUTE *1000 / NODES_IN_NETWORK))
+
+total_buyers = direct_buyers + peer_influenced_buyers
+pct_direct = (direct_buyers / (INFLUENCER_NET_REACH_ABSOLUTE *1000) ) * 100
+pct_peer = (peer_influenced_buyers / (INFLUENCER_NET_REACH_ABSOLUTE *1000) ) * 100
+
+st.write(f"Total Buyers: {total_buyers} ({(total_buyers / (INFLUENCER_NET_REACH_ABSOLUTE *1000) ) * 100:.2f}%)")
 st.write(f"Direct Buyers (Influenced by Influencer): {direct_buyers} ({pct_direct:.2f}%)")
 st.write(f"Peer-Influenced Buyers: {peer_influenced_buyers} ({pct_peer:.2f}%)")
